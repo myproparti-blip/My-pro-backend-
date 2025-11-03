@@ -1,0 +1,179 @@
+import Agent from "../models/agentModel.js";
+import ApiError from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { MESSAGES } from "../utils/messages.js";
+
+const ADMIN_PHONE = process.env.ADMIN_PHONE;
+
+// ✅ Check if current user is master admin
+const isMasterAdmin = (req) => {
+  const phone = req.user?.phone || req.user?.phoneNumber;
+  const roles = req.user?.role || [];
+  return roles.includes("admin") || phone === ADMIN_PHONE;
+};
+
+// ✅ Get all agents (admin only)
+export const getAllAgents = asyncHandler(async (req, res) => {
+  if (!isMasterAdmin(req)) {
+    throw new ApiError(MESSAGES.AGENT.NOT_AUTHORIZED, 403);
+  }
+
+  const agents = await Agent.find().sort({ createdAt: -1 });
+  res.status(200).json({
+    success: true,
+    message: MESSAGES.AGENT.FETCH_SUCCESS,
+    data: agents,
+  });
+});
+
+// ✅ Register agent
+export const registerAgent = asyncHandler(async (req, res) => {
+  const {
+    isPropertyDealer,
+    agentName,
+    firmName,
+    operatingCity,
+    operatingAreaChips = [],
+    operatingSince = "",
+    teamMembers = 0,
+    dealsIn = [],
+    dealsInOther = [],
+    aboutAgent = "",
+  } = req.body || {};
+
+  if (!agentName?.trim() || !operatingCity?.trim() || !dealsIn.length) {
+    throw new ApiError(MESSAGES.AGENT.REQUIRED_FIELDS, 400);
+  }
+
+  const newAgent = await Agent.create({
+    user: req.user?.id,
+    isPropertyDealer:
+      isPropertyDealer === true || isPropertyDealer === "true" ? "yes" : "no",
+    agentName: agentName.trim(),
+    firmName: firmName?.trim() || "",
+    operatingCity: operatingCity.trim(),
+    operatingAreaChips,
+    operatingSince,
+    teamMembers: String(teamMembers),
+    dealsIn,
+    dealsInOther: Array.isArray(dealsInOther)
+      ? dealsInOther.join(", ")
+      : dealsInOther,
+    aboutAgent: aboutAgent?.trim() || "",
+  });
+
+  res.status(201).json({
+    success: true,
+    message: MESSAGES.AGENT.ADD_SUCCESS,
+    data: newAgent,
+  });
+});
+
+// ✅ Get agent by ID
+export const getAgentById = asyncHandler(async (req, res) => {
+  const agent = await Agent.findById(req.params.id);
+  if (!agent) throw new ApiError(MESSAGES.AGENT.NOT_FOUND, 404);
+
+  if (!isMasterAdmin(req) && agent.user?.toString() !== req.user?.id) {
+    throw new ApiError(MESSAGES.AGENT.NOT_AUTHORIZED, 403);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: MESSAGES.AGENT.FETCH_SUCCESS,
+    data: agent,
+  });
+});
+
+// ✅ Update agent (self or admin)
+export const updateAgent = asyncHandler(async (req, res) => {
+  const agent = await Agent.findById(req.params.id);
+  if (!agent) throw new ApiError(MESSAGES.AGENT.NOT_FOUND, 404);
+
+  if (!isMasterAdmin(req) && agent.user?.toString() !== req.user?.id) {
+    throw new ApiError(MESSAGES.AGENT.NOT_AUTHORIZED, 403);
+  }
+
+  const fields = [
+    "isPropertyDealer",
+    "agentName",
+    "firmName",
+    "operatingCity",
+    "operatingAreaChips",
+    "operatingSince",
+    "teamMembers",
+    "dealsIn",
+    "dealsInOther",
+    "aboutAgent",
+  ];
+
+  fields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      agent[field] =
+        typeof req.body[field] === "string"
+          ? req.body[field].trim()
+          : req.body[field];
+    }
+  });
+
+  const updatedAgent = await agent.save();
+  res.status(200).json({
+    success: true,
+    message: MESSAGES.AGENT.UPDATE_SUCCESS,
+    data: updatedAgent,
+  });
+});
+
+// ✅ Approve agent (admin only)
+export const approveAgent = asyncHandler(async (req, res) => {
+  const agent = await Agent.findById(req.params.id);
+  if (!agent) throw new ApiError(MESSAGES.AGENT.NOT_FOUND, 404);
+
+  if (!isMasterAdmin(req)) {
+    throw new ApiError(MESSAGES.AGENT.NOT_AUTHORIZED, 403);
+  }
+
+  agent.isApproved = true;
+  agent.isRejected = false;
+  agent.rejectionMessage = "";
+  agent.approvedBy = req.user.id;
+  agent.approvalDate = Date.now();
+
+  const updated = await agent.save();
+
+  res.status(200).json({
+    success: true,
+    message: MESSAGES.AGENT.APPROVE_SUCCESS,
+    data: updated,
+  });
+});
+
+// ❌ Reject agent (admin only)
+export const rejectAgent = asyncHandler(async (req, res) => {
+  const { rejectionMessage } = req.body;
+
+  const agent = await Agent.findById(req.params.id);
+  if (!agent) throw new ApiError(MESSAGES.AGENT.NOT_FOUND, 404);
+
+  if (!isMasterAdmin(req)) {
+    throw new ApiError(MESSAGES.AGENT.NOT_AUTHORIZED, 403);
+  }
+
+  if (!rejectionMessage || rejectionMessage.trim() === "") {
+    throw new ApiError(MESSAGES.AGENT.REJECTION_MESSAGE_REQUIRED, 400);
+  }
+
+  agent.isApproved = false;
+  agent.isRejected = true;
+  agent.rejectionMessage = rejectionMessage.trim();
+  agent.rejectedBy = req.user.id;
+  agent.rejectionDate = Date.now();
+
+  const updated = await agent.save();
+
+  res.status(200).json({
+    success: true,
+    message: MESSAGES.AGENT.REJECT_SUCCESS,
+    data: updated,
+  });
+});
