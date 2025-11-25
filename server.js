@@ -11,17 +11,6 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
-// WebSocket only works locally, not on Vercel serverless
-let initWebSocket = null;
-if (process.env.NODE_ENV !== "production") {
-  try {
-    const wsModule = await import("./utils/websocketServer.js");
-    initWebSocket = wsModule.initWebSocket;
-  } catch (err) {
-    console.warn("WebSocket support not available:", err.message);
-  }
-}
-
 // ===== Import Routes =====
 import authRoutes from "./routes/authRoutes.js";
 import consultantRoutes from "./routes/consultantRoutes.js";
@@ -81,6 +70,8 @@ const initializeServer = async () => {
     app.use("/api/advertisements", advertisementRoutes);
     app.use("/api/locations", locationRoutes);
     
+    const PORT = process.env.PORT || 5000;
+    
     app.get("/api", (req, res) => {
       res.json({
         success: true,
@@ -95,11 +86,16 @@ const initializeServer = async () => {
     app.use(errorHandler);
 
     // ===== Create HTTP Server & Initialize WebSocket =====
-    const PORT = process.env.PORT || 5000;
     const server = http.createServer(app);
 
-    if (initWebSocket) {
-      initWebSocket(server);
+    // Try to load WebSocket (only works locally, not on Vercel)
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const { initWebSocket } = await import("./utils/websocketServer.js");
+        initWebSocket(server);
+      } catch (err) {
+        console.warn("⚠️ WebSocket not available:", err.message);
+      }
     }
 
     server.listen(PORT, "0.0.0.0", () => {
@@ -108,8 +104,6 @@ const initializeServer = async () => {
       console.log(`✅ MongoDB connected successfully`);
       console.log(`✅ Local Access     → http://localhost:${PORT}`);
       console.log(`🌐 Network Access   → http://${localIp}:${PORT}`);
-      console.log(`🔌 WebSocket        → ws://${localIp}:${PORT}`);
-      console.log("💡 Make sure both devices are on the same Wi-Fi network!");
       console.log("===========================================");
     });
 
