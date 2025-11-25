@@ -1,17 +1,17 @@
-// server.js
+// server.js (Vercel Compatible)
+
 import dotenv from "dotenv";
-dotenv.config({ path: '.env' }); // Explicitly specify path
+dotenv.config({ path: ".env" });
 
 import express from "express";
 import cors from "cors";
 import path from "path";
 import os from "os";
-import http from "http";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
-// ===== Import Routes =====
+// Routes
 import authRoutes from "./routes/authRoutes.js";
 import consultantRoutes from "./routes/consultantRoutes.js";
 import propertyRoutes from "./routes/propertyRoutes.js";
@@ -22,11 +22,11 @@ import locationRoutes from "./routes/locationRoutes.js";
 
 const app = express();
 
-// ===== File & Directory Setup =====
+// Needed for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ===== Helper Function: Get Local Network IP =====
+// Local IP (for logs only)
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -46,77 +46,57 @@ app.use(
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false,
   })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.options("*", cors());
 
-// ===== Database Connection with Error Handling =====
-const initializeServer = async () => {
-  try {
-    console.log("🔄 Initializing database connection...");
+// ❌ REMOVE — it breaks Vercel
+// app.options("*", cors());
+
+// ===== Connect MongoDB (run only once on cold start) =====
+let dbConnected = false;
+
+async function ensureDB() {
+  if (!dbConnected) {
     await connectDB();
-    console.log("✅ Database connected successfully!");
-    
-    // ===== Routes =====
-    app.use("/api/auth", authRoutes);
-    app.use("/api/consultants", consultantRoutes);
-    app.use("/api/properties", propertyRoutes);
-    app.use("/api/payments", paymentRoutes);
-    app.use("/api/agents", agentRoutes);
-    app.use("/api/advertisements", advertisementRoutes);
-    app.use("/api/locations", locationRoutes);
-    
-    const PORT = process.env.PORT || 5000;
-    
-    app.get("/api", (req, res) => {
-      res.json({
-        success: true,
-        message: "Backend API running successfully ✅",
-        serverTime: new Date(),
-        local: `http://localhost:${PORT}`,
-        lan: `http://${localIp}:${PORT}`,
-      });
-    });
-
-    // ===== Error Handler =====
-    app.use(errorHandler);
-
-    // ===== Create HTTP Server & Initialize WebSocket =====
-    const server = http.createServer(app);
-
-    // Try to load WebSocket (only works locally, not on Vercel)
-    if (process.env.NODE_ENV !== "production") {
-      try {
-        const { initWebSocket } = await import("./utils/websocketServer.js");
-        initWebSocket(server);
-      } catch (err) {
-        console.warn("⚠️ WebSocket not available:", err.message);
-      }
-    }
-
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log("===========================================");
-      console.log("🚀 Backend Server Started Successfully!");
-      console.log(`✅ MongoDB connected successfully`);
-      console.log(`✅ Local Access     → http://localhost:${PORT}`);
-      console.log(`🌐 Network Access   → http://${localIp}:${PORT}`);
-      console.log("===========================================");
-    });
-
-  } catch (error) {
-    console.error("💥 Failed to start server:", error.message);
-    console.log("🔧 Troubleshooting steps:");
-    console.log("1. Check MongoDB connection string in .env file");
-    console.log("2. Verify internet connection");
-    console.log("3. Check if MongoDB Atlas cluster is running");
-    console.log("4. Verify IP is whitelisted in MongoDB Atlas");
-    process.exit(1);
+    dbConnected = true;
+    console.log("✅ MongoDB connected (Vercel cold start)");
   }
-};
+}
 
-// Start the server
-initializeServer();
+// ===== Routes =====
+app.use("/api/auth", authRoutes);
+app.use("/api/consultants", consultantRoutes);
+app.use("/api/properties", propertyRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/agents", agentRoutes);
+app.use("/api/advertisements", advertisementRoutes);
+app.use("/api/locations", locationRoutes);
+
+app.get("/api", async (req, res) => {
+  await ensureDB();
+  res.json({
+    success: true,
+    message: "Backend API running successfully ✅",
+    serverTime: new Date(),
+  });
+});
+
+// Error Handler
+app.use(errorHandler);
+
+// =============================================
+// ⭐ EXPORT EXPRESS APP AS VERCEL HANDLER
+// =============================================
+export default async function handler(req, res) {
+  await ensureDB();
+  return app(req, res);
+}
+
+export const config = {
+  api: {
+    bodyParser: false, // Allow Express to handle body parsing
+  },
+};
