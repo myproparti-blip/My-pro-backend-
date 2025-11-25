@@ -103,16 +103,16 @@ app.get("/api", async (req, res) => {
   }
 });
 
-// 404 handler
+// Error handler (must come before 404 handler)
+app.use(errorHandler);
+
+// 404 handler - catch all unmatched routes
 app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`
   });
 });
-
-// Error handler
-app.use(errorHandler);
 
 // Vercel serverless function handler
 export default app;
