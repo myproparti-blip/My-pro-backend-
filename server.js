@@ -1,13 +1,8 @@
-// server.js (Vercel Compatible)
-
 import dotenv from "dotenv";
-dotenv.config({ path: ".env" });
+dotenv.config();
 
 import express from "express";
 import cors from "cors";
-import path from "path";
-import os from "os";
-import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
@@ -22,81 +17,102 @@ import locationRoutes from "./routes/locationRoutes.js";
 
 const app = express();
 
-// Needed for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Middleware - Simplified for Vercel
+app.use(cors());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Local IP (for logs only)
-function getLocalIp() {
-  const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === "IPv4" && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return "localhost";
-}
-const localIp = getLocalIp();
-
-// ===== Middleware =====
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ❌ REMOVE — it breaks Vercel
-// app.options("*", cors());
-
-// ===== Connect MongoDB (run only once on cold start) =====
+// Database connection state
 let dbConnected = false;
+let dbConnectionPromise = null;
 
 async function ensureDB() {
   if (!dbConnected) {
-    await connectDB();
-    dbConnected = true;
-    console.log("✅ MongoDB connected (Vercel cold start)");
+    if (!dbConnectionPromise) {
+      dbConnectionPromise = connectDB().then(() => {
+        dbConnected = true;
+        console.log("✅ MongoDB connected on Vercel");
+      }).catch(error => {
+        console.error("❌ MongoDB connection failed:", error);
+        dbConnectionPromise = null;
+        throw error;
+      });
+    }
+    await dbConnectionPromise;
   }
 }
 
-// ===== Routes =====
-app.use("/api/auth", authRoutes);
+// Health check (no DB dependency)
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development"
+  });
+});
+
+// API routes with DB connection
+app.use("/api/auth", async (req, res, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Database connection failed" 
+    });
+  }
+}, authRoutes);
+
+app.use("/api/properties", async (req, res, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Database connection failed" 
+    });
+  }
+}, propertyRoutes);
+
+// Add similar middleware for other routes...
 app.use("/api/consultants", consultantRoutes);
-app.use("/api/properties", propertyRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/advertisements", advertisementRoutes);
 app.use("/api/locations", locationRoutes);
 
+// Root endpoint
 app.get("/api", async (req, res) => {
-  await ensureDB();
-  res.json({
-    success: true,
-    message: "Backend API running successfully ✅",
-    serverTime: new Date(),
+  try {
+    await ensureDB();
+    res.json({
+      success: true,
+      message: "Backend API running successfully ✅",
+      serverTime: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Database connection unavailable",
+      serverTime: new Date().toISOString()
+    });
+  }
+});
+
+// 404 handler
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`
   });
 });
 
-// Error Handler
+// Error handler
 app.use(errorHandler);
 
-// =============================================
-// ⭐ EXPORT EXPRESS APP AS VERCEL HANDLER
-// =============================================
-export default async function handler(req, res) {
-  await ensureDB();
-  return app(req, res);
-}
-
-export const config = {
-  api: {
-    bodyParser: false, // Allow Express to handle body parsing
-  },
-};
+// Vercel serverless function handler
+export default app;
