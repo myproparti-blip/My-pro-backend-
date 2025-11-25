@@ -65,10 +65,21 @@ export const addConsultant = asyncHandler(async (req, res) => {
     experience,
     money,
     moneyType,
+    certifications,
     expertise,
     languages,
     address,
     location,
+    addressLine1,
+    addressLine2,
+    landmark,
+    locality,
+    city,
+    state,
+    country,
+    pincode,
+    latitude,
+    longitude,
   } = req.body;
 
   const baseUrl = getBaseUrl(req);
@@ -91,10 +102,8 @@ export const addConsultant = asyncHandler(async (req, res) => {
     throw new ApiError(MESSAGES.CONSULTANT.INVALID_MONEY_TYPE, 400);
   }
 
-  const existing = await consultantModel.findOne({
-    name: name.trim(),
-    phone: phone.trim(),
-  });
+  // ✅ Allow only one consultant per phone number
+  const existing = await consultantModel.findOne({ phone: phone.trim() });
   if (existing) throw new ApiError(MESSAGES.CONSULTANT.EXISTS, 400);
 
   const imagePath = req.files.image[0].path;
@@ -114,12 +123,22 @@ export const addConsultant = asyncHandler(async (req, res) => {
     money,
     moneyType: moneyType || "project",
     expertise: expertise.trim(),
-    certifications: "",
+    certifications: certifications?.trim() || "",
     languages: formattedLanguages,
     image: imagePath,
     idProof: idProofPath,
     address: address?.trim() || "",
-    location: location.trim(),
+    location: location?.trim() || "",
+    addressLine1: addressLine1?.trim() || "",
+    addressLine2: addressLine2?.trim() || "",
+    landmark: landmark?.trim() || "",
+    locality: locality?.trim() || "",
+    city: city?.trim() || "",
+    state: state?.trim() || "",
+    country: country?.trim() || "India",
+    pincode: pincode?.trim() || "",
+    latitude: latitude ? Number(latitude) : null,
+    longitude: longitude ? Number(longitude) : null,
     user: req.user?.id || null,
   });
 
@@ -136,6 +155,7 @@ export const addConsultant = asyncHandler(async (req, res) => {
   });
 });
 
+
 export const updateConsultant = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const baseUrl = getBaseUrl(req);
@@ -147,17 +167,19 @@ export const updateConsultant = asyncHandler(async (req, res) => {
   const consultant = await consultantModel.findById(id);
   if (!consultant) throw new ApiError(MESSAGES.CONSULTANT.NOT_FOUND, 404);
 
+  // 🔒 Auth check
   if (!isMasterAdmin(req) && consultant.user?.toString() !== req.user.id) {
     throw new ApiError(MESSAGES.CONSULTANT.NOT_AUTHORIZED, 403);
   }
 
+  // 💰 Validate moneyType
   if (req.body.moneyType && !["minute", "hour", "project"].includes(req.body.moneyType)) {
     throw new ApiError(MESSAGES.CONSULTANT.INVALID_MONEY_TYPE, 400);
   }
 
+  // ✅ Allowed updatable fields (no phone!)
   const fields = [
     "name",
-    "phone",
     "designation",
     "experience",
     "money",
@@ -167,6 +189,16 @@ export const updateConsultant = asyncHandler(async (req, res) => {
     "languages",
     "address",
     "location",
+    "addressLine1",
+    "addressLine2",
+    "landmark",
+    "locality",
+    "city",
+    "state",
+    "country",
+    "pincode",
+    "latitude",
+    "longitude",
   ];
 
   fields.forEach((field) => {
@@ -175,6 +207,8 @@ export const updateConsultant = asyncHandler(async (req, res) => {
         consultant.languages = Array.isArray(req.body.languages)
           ? req.body.languages
           : req.body.languages.toString().split(",").map((l) => l.trim());
+      } else if (["latitude", "longitude"].includes(field)) {
+        consultant[field] = Number(req.body[field]);
       } else if (typeof req.body[field] === "string") {
         consultant[field] = req.body[field].trim();
       } else {
@@ -183,6 +217,7 @@ export const updateConsultant = asyncHandler(async (req, res) => {
     }
   });
 
+  // 📸 File updates
   if (req.files?.image?.[0]) consultant.image = req.files.image[0].path;
   if (req.files?.idProof?.[0]) consultant.idProof = req.files.idProof[0].path;
 
@@ -201,27 +236,7 @@ export const updateConsultant = asyncHandler(async (req, res) => {
   });
 });
 
-// export const deleteConsultant = asyncHandler(async (req, res) => {
-//   const { id } = req.params;
 
-//   if (!mongoose.Types.ObjectId.isValid(id)) {
-//     throw new ApiError(MESSAGES.CONSULTANT.INVALID_ID, 400);
-//   }
-
-//   const consultant = await consultantModel.findById(id);
-//   if (!consultant) throw new ApiError(MESSAGES.CONSULTANT.NOT_FOUND, 404);
-
-//   if (!isMasterAdmin(req) && consultant.user?.toString() !== req.user.id) {
-//     throw new ApiError(MESSAGES.CONSULTANT.NOT_AUTHORIZED, 403);
-//   }
-
-//   await consultant.deleteOne();
-
-//   res.status(200).json({
-//     success: true,
-//     message: MESSAGES.CONSULTANT.DELETE_SUCCESS,
-//   });
-// });
 
 export const approveConsultant = asyncHandler(async (req, res) => {
   const { id } = req.params;
