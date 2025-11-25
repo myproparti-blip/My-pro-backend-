@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: backend
+    env: node
+    startCommand: npm start
+    buildCommand: npm install
