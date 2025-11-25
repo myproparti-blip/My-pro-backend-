@@ -2,28 +2,56 @@ import mongoose from "mongoose";
 
 const agentSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    isPropertyDealer: { type: String, enum: ["yes", "no"], required: true },
-    agentName: { type: String, required: true },
-    firmName: { type: String },
-    operatingCity: { type: String, required: true },
-    operatingAreaChips: [{ type: String }],
-    operatingSince: { type: String },
-    teamMembers: { type: String },
-    dealsIn: [{ type: String }],
-    dealsInOther: { type: String },
-    aboutAgent: { type: String },
-    isApproved: { type: Boolean, default: false },
-    isRejected: { type: Boolean, default: false },
-    rejectionMessage: { type: String },
-    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    approvalDate: { type: Date },
-    rejectionDate: { type: Date },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+      unique: true, // ✅ ensure one agent per phone
+    },
+    isPropertyDealer: {
+      type: String,
+      enum: ["yes", "no"],
+      required: true,
+    },
+    agentName: { type: String, required: true, trim: true },
+    firmName: { type: String, default: "", trim: true },
+    operatingCity: { type: String, required: true, trim: true },
+    operatingAreaChips: { type: [String], default: [] },
+    operatingSince: { type: String, default: "" },
+    teamMembers: { type: String, default: "" },
+    dealsIn: { type: [String], default: [] },
+    dealsInOther: { type: [String], default: [] },
+    aboutAgent: { type: String, default: "" },
+    image: { type: String, required: true },
+    idProof: { type: String, required: true },
+
+    address: { type: String, default: "" },
+    location: { type: String, default: "" },
+    addressLine1: { type: String, default: "" },
+    addressLine2: { type: String, default: "" },
+    landmark: { type: String, default: "" },
+    locality: { type: String, default: "" },
+    city: { type: String, default: "" },
+    state: { type: String, default: "" },
+    country: { type: String, default: "India" },
+    pincode: { type: String, default: "" },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    rejectedReason: { type: String, default: "" },
   },
   { timestamps: true }
 );
 
-const Agent = mongoose.model("Agent", agentSchema);
+agentSchema.index({ user: 1, agentName: 1 }, { unique: true });
 
-export default Agent;
+export default mongoose.model("Agent", agentSchema);

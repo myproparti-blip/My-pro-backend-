@@ -6,5 +6,4 @@ const paymentSchema = new mongoose.Schema({
   amount: Number,
   status: { type: String, default: "created" },
 }, { timestamps: true });
-
 export default mongoose.model("Payment", paymentSchema);
