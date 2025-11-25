@@ -6,7 +6,7 @@ import axios from "axios";
 import User from "../models/userModel.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/apiError.js";
-import { generateToken } from "../utils/generateToken.js";
+import { generateTokens } from "../utils/generateToken.js";
 import { MESSAGES } from "../utils/messages.js";
 const {
   FAST2SMS_API_KEY,
