@@ -22,12 +22,17 @@ const storage = new CloudinaryStorage({
       folder = "consultants";
     } else if (req.originalUrl.includes("/property")) {
       folder = "properties/images";
+    } else if (req.originalUrl.includes("/advertisement")) {
+      folder = "advertisements/images";
+    }else if (req.originalUrl.includes("/agent")) {
+      folder = "agent/images";
     }
-
     // Detect videos
     if (file.mimetype.startsWith("video/")) {
       resource_type = "video";
+
       if (folder.includes("property")) folder = "properties/videos";
+      else if (folder.includes("advertisement")) folder = "advertisements/videos";
       else folder = "consultant_videos";
     }
 

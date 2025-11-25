@@ -1,20 +1,23 @@
 export const MESSAGES = {
   AUTH: {
-    PHONE_ROLE_REQUIRED: "Phone number and role are required",
-    INVALID_PHONE: "Invalid phone number",
-    OTP_SENT: "OTP sent successfully",
-    OTP_RESENT: "OTP resent successfully",
-    OTP_FAILED: "Failed to send OTP",
-    OTP_INVALID: "Invalid OTP request",
-    OTP_EXPIRED: "OTP has expired",
-    OTP_INCORRECT: "Incorrect OTP",
-    LOGIN_SUCCESS: "Login successful",
-    ADMIN_LOGIN_SUCCESS: "Admin login successful",
-    TOKEN_MISSING: "Authorization token missing",
-    TOKEN_INVALID: "Invalid or expired token",
-    ACCOUNT_DELETED: "Account deleted successfully",
-    USER_NOT_FOUND: "User not found",
-    NOT_AUTHORIZED: "Not authorized to perform this action"
+  PHONE_ROLE_REQUIRED: "Phone number and role are required.",
+  PHONE_REQUIRED: "Phone number is required.",
+  INVALID_PHONE: "Invalid phone number.",
+  OTP_SENT: "OTP sent successfully.",
+  OTP_FAILED: "Failed to send OTP.",
+  OTP_INVALID: "Invalid OTP request.",
+  OTP_EXPIRED: "OTP has expired.",
+  OTP_INCORRECT: "Incorrect OTP.",
+  OTP_RESEND_SUCCESS: "OTP resent successfully.",
+  OTP_RESEND_WAIT: "Please wait 30 seconds before resending OTP.",
+  OTP_NOT_FOUND: "No OTP request found. Please request a new OTP first.",
+  LOGIN_SUCCESS: "Login successful.",
+  ADMIN_LOGIN_SUCCESS: "Admin login successful.",
+  TOKEN_MISSING: "Authorization token missing.",
+  TOKEN_INVALID: "Invalid or expired token.",
+  ACCOUNT_DELETED: "Account deleted successfully.",
+  USER_NOT_FOUND: "User not found.",
+  NOT_AUTHORIZED: "Not authorized to perform this action."
   },
 
   CONSULTANT: {
@@ -62,10 +65,10 @@ PROPERTY: {
 
 
   PAYMENT: {
-    ORDER_CREATED: "Payment order created successfully",
-    ORDER_FAILED: "Failed to create payment order",
-    VERIFIED_SUCCESS: "Payment verified successfully",
-    VERIFIED_FAIL: "Payment verification failed"
+    ORDER_CREATED: " Payment order created successfully.",
+    ORDER_FAILED: "Failed to create payment order.",
+    VERIFIED_SUCCESS: "Payment verified successfully.",
+    VERIFIED_FAIL: " Payment verification failed.",
   },
 
 AGENT: {
@@ -92,5 +95,20 @@ AGENT: {
     DB_CONNECT_ERROR: "Database connection error",
     INVALID_ID: "Invalid ID provided",
     ACTION_FAILED: "Action failed, please try again"
+  },
+  ADVERTISEMENT: {
+  UPLOAD_IMAGE_SUCCESS: "Advertisement image uploaded successfully",
+  UPLOAD_VIDEO_SUCCESS: "Advertisement video uploaded successfully",
+  UPLOAD_MULTIPLE_SUCCESS: "Advertisement files uploaded successfully",
+  FETCH_SUCCESS: "Advertisements fetched successfully",
+  DELETE_SUCCESS: "Advertisement deleted successfully",
+  NOT_FOUND: "Advertisement not found"
+},
+ LOCATION: {
+    QUERY_TOO_SHORT: "Query too short",
+    LAT_LON_REQUIRED: "Latitude and longitude are required",
+    LOCATION_NOT_FOUND: "Location not found",
+    FETCH_SUGGESTIONS_FAILED: "Failed to fetch location suggestions",
+    FETCH_CURRENT_FAILED: "Failed to fetch current location"
   }
 };
