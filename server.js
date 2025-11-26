@@ -17,112 +17,146 @@ import locationRoutes from "./routes/locationRoutes.js";
 
 const app = express();
 
-// Middleware - Simplified for Vercel
-app.use(cors({
-  origin: "*",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+// ------------------------------
+// ✅ FIXED CORS FOR VERCEL
+// ------------------------------
+const allowedOrigins = [
+  "https://my-proparti-brw2cvos8-propartis-projects.vercel.app",
+  "http://localhost:3000",
+];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// ------------------------------
+// JSON Body Parsing
+// ------------------------------
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Database connection state
+// ------------------------------
+// MongoDB Lazy Connection (Vercel optimized)
+// ------------------------------
 let dbConnected = false;
 let dbConnectionPromise = null;
 
 async function ensureDB() {
   if (!dbConnected) {
     if (!dbConnectionPromise) {
-      dbConnectionPromise = connectDB().then(() => {
-        dbConnected = true;
-        console.log("✅ MongoDB connected on Vercel");
-      }).catch(error => {
-        console.error("❌ MongoDB connection failed:", error);
-        dbConnectionPromise = null;
-        throw error;
-      });
+      dbConnectionPromise = connectDB()
+        .then(() => {
+          dbConnected = true;
+          console.log("✅ MongoDB connected");
+        })
+        .catch((error) => {
+          console.error("❌ MongoDB connection failed:", error);
+          dbConnectionPromise = null;
+          throw error;
+        });
     }
     await dbConnectionPromise;
   }
 }
 
-// Health check (no DB dependency)
+// ------------------------------
+// Health Check Route
+// ------------------------------
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Server is running",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development"
+    time: new Date().toISOString(),
   });
 });
 
-// API routes with DB connection
-app.use("/api/auth", async (req, res, next) => {
-  try {
-    await ensureDB();
-    next();
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Database connection failed" 
-    });
-  }
-}, authRoutes);
+// ------------------------------
+// API Routes (DB required)
+// ------------------------------
+app.use(
+  "/api/auth",
+  async (req, res, next) => {
+    try {
+      await ensureDB();
+      next();
+    } catch {
+      res.status(500).json({ success: false, message: "Database connection failed" });
+    }
+  },
+  authRoutes
+);
 
-app.use("/api/properties", async (req, res, next) => {
-  try {
-    await ensureDB();
-    next();
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Database connection failed" 
-    });
-  }
-}, propertyRoutes);
+app.use(
+  "/api/properties",
+  async (req, res, next) => {
+    try {
+      await ensureDB();
+      next();
+    } catch {
+      res.status(500).json({ success: false, message: "Database connection failed" });
+    }
+  },
+  propertyRoutes
+);
 
-// Add similar middleware for other routes...
+// Other routes (DB optional)
 app.use("/api/consultants", consultantRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/advertisements", advertisementRoutes);
 app.use("/api/locations", locationRoutes);
 
-// Root endpoint
+// ------------------------------
+// Default root
+// ------------------------------
 app.get("/", (req, res) => {
   res.json({ message: "Backend API is running" });
 });
 
-// Root endpoint
 app.get("/api", async (req, res) => {
   try {
     await ensureDB();
     res.json({
       success: true,
-      message: "Backend API running successfully ✅",
-      serverTime: new Date().toISOString(),
-      environment: process.env.NODE_ENV || "development"
+      message: "Backend API running successfully",
+      time: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({
       success: false,
-      message: "Database connection unavailable",
-      serverTime: new Date().toISOString()
+      message: "Database connection failed",
     });
   }
 });
 
-// Error handler (must come before 404 handler)
+// ------------------------------
+// Error Handler
+// ------------------------------
 app.use(errorHandler);
 
-// 404 handler - catch all unmatched routes
+// ------------------------------
+// 404 Handler
+// ------------------------------
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req.originalUrl} not found`,
   });
 });
 
-// Vercel serverless function handler
+// Export for Vercel serverless
 export default app;
