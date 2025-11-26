@@ -112,7 +112,7 @@ app.get("/api", async (req, res) => {
 app.use(errorHandler);
 
 // 404 handler - catch all unmatched routes
-app.use("/*", (req, res) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`
