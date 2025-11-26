@@ -85,6 +85,11 @@ app.use("/api/advertisements", advertisementRoutes);
 app.use("/api/locations", locationRoutes);
 
 // Root endpoint
+app.get("/", (req, res) => {
+  res.json({ message: "Backend API is running" });
+});
+
+// Root endpoint
 app.get("/api", async (req, res) => {
   try {
     await ensureDB();
