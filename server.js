@@ -17,9 +17,7 @@ import locationRoutes from "./routes/locationRoutes.js";
 
 const app = express();
 
-// ------------------------------
-// ✅ UPDATED CORS FOR ALL YOUR DOMAINS
-// ------------------------------
+
 const allowedOrigins = [
   // ✅ Your actual frontend domains
   "https://my-proparti.vercel.app",
