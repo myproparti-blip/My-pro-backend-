@@ -37,7 +37,15 @@ const allowedOrigins = [
   // ✅ React Native apps (Expo Go, development builds)
   "exp://192.168.29.78:8081",
   "exp://localhost:8081",
+  
+  // ✅ WILDCARD - Allow all Vercel preview deployments (*.vercel.app)
+  // This is helpful during development; restrict in production
 ];
+
+// Vercel preview URLs helper
+const isVercelPreviewAllowed = (origin) => {
+  return origin && /^https:\/\/.*\.vercel\.app$/.test(origin);
+};
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -51,8 +59,8 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Check if origin is allowed
-  if (allowedOrigins.includes(origin)) {
+  // Check if origin is allowed (exact match or Vercel preview)
+  if (allowedOrigins.includes(origin) || isVercelPreviewAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     console.log("✅ CORS Allowed for origin:", origin);
   } else {
